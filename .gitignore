@@ -36,6 +36,8 @@ build/
 
 # Services
 line.thrift
+**/thrift/
 
 # OS X
 .DS_Store
+
