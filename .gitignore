@@ -33,3 +33,9 @@ build/
 
 # unless supporting rvm < 1.11.0 or doing something fancy, ignore this:
 .rvmrc
+
+# Services
+line.thrift
+
+# OS X
+.DS_Store
