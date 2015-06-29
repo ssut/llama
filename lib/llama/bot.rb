@@ -3,14 +3,17 @@ require 'llama/listener'
 require 'llama/listener_list'
 require 'llama/helpers'
 require 'llama/callback'
+require 'llama/utils/object'
+require 'ostruct'
 
 module Llama
   class Bot
     attr_reader :callback
+    attr_reader :listeners
 
     def initialize(&b)
       @listeners = ListenerList.new
-      @handler = nil
+      @service = nil
       @callback = Callback.new(self)
       @semaphores_mutex = Mutex.new
       @semaphores = Hash.new { |h, k| h[k] = Mutex.new }
@@ -19,11 +22,16 @@ module Llama
       instance_eval(&b) if block_given?
     end
 
-    def service(name)
-      if not @handler.nil?
-        puts 'error'
-      end
-      @handler = name
+    def service(name, &block)
+      raise 'error' unless @service.nil?
+
+      config = OpenStruct.new(:username => '', :password => '', :name => '')
+      yield config
+
+      require("llama/services/#{name}/#{name}")
+      cls = 'Llama::' << "#{name}".capitalize << '::' << "#{name}".capitalize << 'Service'
+      cls = Utils::class_from_string(cls)
+      @service = cls.new(self, config)
     end
 
     def synchronize(name, &block)
@@ -43,8 +51,7 @@ module Llama
     end
 
     def start
-      @listeners.dispatch(:message, 'hellos', nil)
-      sleep 5
+      @service.start
     end
   end
 end

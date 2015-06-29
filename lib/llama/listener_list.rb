@@ -31,7 +31,7 @@ module Llama
         end
 
         listeners = listeners.select { |listener|
-          msg.match(listener.regex)
+          msg.raw.match(listener.regex)
         }.group_by { |listener| listener.group }
 
         listeners.values_at(*(listeners.keys - [nil])).map(&:first) + (listeners[nil] || [])
@@ -48,7 +48,7 @@ module Llama
           next if already_run.include?(listener.block)
 
           if msg
-            captures = msg.match(listener.regex).captures
+            captures = msg.raw.match(listener.regex).captures
           else
             captures = []
           end
