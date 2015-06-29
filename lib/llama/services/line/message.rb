@@ -22,7 +22,6 @@ module Llama
       @raw = msg.text
       @time = DateTime.strptime((msg.createdTime / 1000).to_s, '%s')
       @type = msg.toType
-      @has_content = msg.hasContent
       @content_type = msg.contentType
       @content_preview = msg.contentPreview
       @content_metadata = msg.contentMetadata
@@ -56,6 +55,10 @@ module Llama
       elsif type == :sticker
         @target.send_sticker
       end
+    end
+
+    def has_content?
+      @msg.hasContent
     end
   end
 end

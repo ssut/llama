@@ -95,6 +95,7 @@ module Llama
           @provider = IdentityProvider::LINE
           self.login()
         end
+        puts 'logged in'
 
         self.get_profile()
 
@@ -126,6 +127,7 @@ module Llama
         @transport_in.open
 
         @revision = @client.getLastOpRevision() if @revision == 0
+        p @revision
       end
 
       def login()
@@ -170,6 +172,7 @@ module Llama
 
       def revive
         if @cert
+          puts 'trying to revive'
           self.login()
           self.login_token()
         else
@@ -187,10 +190,8 @@ module Llama
             self.revive()
           end
 
-          if ops.nil?
-            p 'next'
-            next
-          end
+          next if ops.nil?
+
           ops.each do |op|
             p op
             case op.type

@@ -3,6 +3,8 @@ require 'llama/listener'
 require 'llama/listener_list'
 require 'llama/callback'
 require 'llama/utils/object'
+
+require 'active_support/core_ext/object/try'
 require 'ostruct'
 
 module Llama

@@ -47,12 +47,7 @@ module Llama
         listeners.each do |listener|
           next if already_run.include?(listener.block)
 
-          if msg
-            captures = msg.raw.match(listener.regex).captures
-          else
-            captures = []
-          end
-        
+          captures = msg ? msg.raw.match(listener.regex).captures : []
           threads << listener.call(msg, captures, args)
         end
       end

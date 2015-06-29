@@ -34,27 +34,20 @@ module Llama
       end
 
       def get_contact_by_name(name)
-        find = @contacts.select { |c| c.name == name }
-        find.first
+        @contacts.select { |c| c.name == name }.first
       end
 
       def get_contact_by_id(id)
-        if @profile
-          return @profile if @profile.id == id
-        end
-
-        find = @contacts.select { |c| c.id == id }
-        find.first
+        return @profile if @profile.try(:id) == id
+        @contacts.select { |c| c.id == id }.first
       end
 
       def get_room_by_id(id)
-        find = @rooms.select { |r| r.id == id }
-        find.first
+        @rooms.select { |r| r.id == id }.first
       end
 
       def get_group_by_id(id)
-        find = @groups.select { |g| g.id == id }
-        find.first
+        @groups.select { |g| g.id == id }.first
       end
 
       def get_anything_by_id(id)
@@ -64,14 +57,12 @@ module Llama
       def refresh_groups
         @groups = []
 
-        # fetch all groups
-        joined = @client.getGroupIdsJoined()
-        joined = @client.getGroups(joined)
-        invited = @client.getGroupIdsInvited()
-        invited = @client.getGroups(invited)
-
-        joined.each { |g| @groups << LineGroup.new(self, g, true) }
-        invited.each { |g| @groups << LineGroup.new(self, g, false) }
+        (joined = @client.getGroups(@client.getGroupIdsJoined())).each do |g|
+          @groups << LineGroup.new(self, g, true)
+        end
+        (invited = @client.getGroups(@client.getGroupIdsInvited())).each do |g|
+          @groups << LineGroup.new(self, g, false)
+        end
       end
 
       def refresh_contacts
