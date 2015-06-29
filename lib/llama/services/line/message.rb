@@ -30,6 +30,15 @@ module Llama
       @sender = service.get_anything_by_id(msg.from)
       @receiver = service.get_anything_by_id(msg.to)
 
+      if @sender.nil? or @receiver.nil?
+        @service.refresh_groups()
+        @service.refresh_contacts()
+        @service.refresh_rooms()
+
+        @sender = service.get_anything_by_id(msg.from)
+        @receiver = service.get_anything_by_id(msg.to)
+      end
+
       # message target
       @target = case @type
       when ToType::USER
