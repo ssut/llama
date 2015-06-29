@@ -100,9 +100,7 @@ module Llama
 
         begin; self.refresh_groups(); rescue; end
         begin; self.refresh_contacts(); rescue; end
-        #begin;
-        self.refresh_rooms(); #rescue; end
-        true
+        begin; self.refresh_rooms(); rescue; end
       end
 
       def login_token()
