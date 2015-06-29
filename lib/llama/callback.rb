@@ -5,8 +5,6 @@ module Llama
   #
   # @api private
   class Callback
-    include Helpers
-
     # @return [Bot]
     attr_reader :bot
     def initialize(bot)
