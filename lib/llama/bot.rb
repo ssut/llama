@@ -1,7 +1,6 @@
 # coding: utf-8
 require 'llama/listener'
 require 'llama/listener_list'
-require 'llama/helpers'
 require 'llama/callback'
 require 'llama/utils/object'
 require 'ostruct'
