@@ -41,3 +41,6 @@ line.thrift
 # OS X
 .DS_Store
 
+# vim
+*.swp
+
