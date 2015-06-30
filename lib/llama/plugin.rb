@@ -24,6 +24,8 @@ module Llama
       def initialize(bot=nil)
         @bot = bot
         @threads = ThreadGroup.new
+
+        self.init if self.class.method_defined? :init
       end
 
       def dispatch(msg)
