@@ -51,10 +51,15 @@ module Llama
 
     def reply(type, content)
       if type == :text
-        @target.send_message content
+        result = @target.send_message(content)
       elsif type == :sticker
-        @target.send_sticker
+        result = @target.send_sticker
+      elsif type == :image
+        method = content.include?('http') ? @target.method(:send_image_url) : @target.method(:send_image)
+        result = method.call(content)
       end
+
+      result
     end
 
     def has_content?
