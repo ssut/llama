@@ -11,7 +11,7 @@ module Llama
 
       def match(pattern, dest=:execute)
         if pattern.class == String
-          pattern = Regexp.escape(regex)
+          pattern = Regexp.escape(pattern)
           pattern = Regexp.new("^#{pattern}$")
         end
         @matchers[pattern] = dest
