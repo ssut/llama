@@ -1,6 +1,7 @@
 module Llama
   module Plugin
     module ClassMethods
+
       attr_reader :matchers
 
       def self.extended(by)
@@ -19,6 +20,7 @@ module Llama
     end
 
     module InstanceMethods
+      include Llama::Logging
       attr_reader :threads
 
       def initialize(bot=nil)

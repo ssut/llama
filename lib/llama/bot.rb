@@ -1,4 +1,5 @@
 # coding: utf-8
+require 'llama/logger'
 require 'llama/listener'
 require 'llama/listener_list'
 require 'llama/callback'
@@ -11,6 +12,8 @@ require 'ostruct'
 
 module Llama
   class Bot
+    include Logging
+
     attr_reader :callback
     attr_reader :listeners
 
@@ -21,13 +24,14 @@ module Llama
       @semaphores_mutex = Mutex.new
       @semaphores = Hash.new { |h, k| h[k] = Mutex.new }
       @callback = Callback.new(self)
+      @plugins_classes = []
       @plugins = PluginList.new(self)
 
       instance_eval(&b) if block_given?
     end
 
     def service(name, &block)
-      raise 'error' unless @service.nil?
+      raise "A service already exists!" unless @service.nil?
 
       config = OpenStruct.new(:username => '', :password => '', :name => '')
       yield config
@@ -47,11 +51,9 @@ module Llama
     end
 
     def plugin(*plugins)
-      plugins.each do |p|
-        raise "class needed" unless p.class == Class
-
-        puts "#{p} loaded"
-        @plugins.register(p)
+      @plugins_classes = plugins.map do |p|
+        raise "Plugin must be a Class object" unless p.class == Class
+        p
       end
     end
 
@@ -74,6 +76,12 @@ module Llama
     end
 
     def start
+      @plugins_classes.each do |p|
+        logger.info("Load Plugin: #{p}")
+        @plugins.register(p)
+      end
+
+      logger.info('Start Service')
       @service.start
     end
   end

@@ -21,6 +21,8 @@ require_relative './message'
 module Llama
   module Line
     class LineService < LineAPI
+      include Logging
+
       attr_reader :bot
 
       attr_reader :client
@@ -81,7 +83,7 @@ module Llama
           @provider = IdentityProvider::LINE
           self.login()
         end
-        puts 'logged in'
+        logger.info("You have successfully logged in to the LINE")
 
         self.get_profile()
 
@@ -126,7 +128,7 @@ module Llama
       end
 
       def login_token
-        puts 'login with token..'
+        logger.info("Trying to log in with given credentials")
         @headers['X-Line-Access'] = @cert
         @transport.add_headers(@headers)
         @revision = @client.getLastOpRevision() if @revision == 0
@@ -142,11 +144,11 @@ module Llama
         # open
         @transport_in.open
 
-        puts "success.. revision is #{@revision}"
+        logger.info("Revision is #{@revision}")
       end
 
       def login()
-        puts 'login..'
+        logger.info("Trying to log in with given username and password")
         @headers.delete('X-Line-Access')
         json = JSON.parse(@agent.get(LineService::LINE_SESSION_LINE_URL).body)
         data = OpenStruct.new(json)
@@ -178,23 +180,23 @@ module Llama
           begin
             msg = @client.loginWithVerifierForCertificate(verifier)
           rescue
-            puts "wrong"
+            logger.error("Failed")
           ensure
             @cert = msg.authToken
             self.login_token()
           end
         else
-          puts 'something wrong'
+          logger.error("Maybe there is something wrong during the authentication")
         end
       end
 
       def revive
         if @cert
-          puts 'trying to revive'
+          logger.debug("Trying to revive to continuously")
           self.login()
           self.login_token()
         else
-          raise 'You need to login first'
+          raise "You need to login first"
         end
 
         true
@@ -207,7 +209,7 @@ module Llama
           rescue SystemExit, Interrupt
             break
           rescue Net::ReadTimeout => e
-            'readtimeout'
+            logger.debug("Timeout occurred while waiting for a operation")
             next
           rescue Exception => e
             p e
@@ -217,7 +219,7 @@ module Llama
           next if ops.nil?
 
           ops.each do |op|
-            p op
+            logger.debug("A new operation is retrieved: #{op}")
             case op.type
             when OpType::END_OF_OPERATION
             when OpType::ADD_CONTACT
