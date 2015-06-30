@@ -185,8 +185,14 @@ module Llama
       def start
         loop do
           begin
-            ops = @client_in.fetchOperations(@revision, 100)
-          rescue
+            ops = @client_in.fetchOperations(@revision, 50)
+          rescue SystemExit, Interrupt
+            break
+          rescue Net::ReadTimeout => e
+            'readtimeout'
+            next
+          rescue Exception => e
+            p e
             self.revive()
           end
 
