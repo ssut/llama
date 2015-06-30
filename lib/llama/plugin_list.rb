@@ -30,8 +30,8 @@ module Llama
       threads
     end
 
-    def stop_all
-      self.each { |p| p.stop }
+    def stop_all(force=false)
+      self.each { |p| p.stop(force) }
     end
   end
 end
