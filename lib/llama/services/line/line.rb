@@ -25,6 +25,7 @@ module Llama
 
       attr_reader :client
       attr_reader :agent
+      attr_reader :cert
 
       attr_reader :profile
       attr_reader :contacts
@@ -56,41 +57,26 @@ module Llama
         # Certificate
         @cert = nil
 
+        @name = conf.name
         @user = conf.username
         @pass = conf.password
 
-        version = '4.0.3'
-        os_version = '10.9.4-MAVERICKS-x64'
-        user_agent = "DESKTOP:MAC:#{os_version}(#{version})"
-        app = "DESKTOPMAC\t#{version}\tMAC\t\t#{os_version}"
-
-        hostname = Socket.gethostname()
-        @ip = IPSocket.getaddress(Socket.gethostbyname(hostname).first)
-        @name = conf.name
-
-        @headers = {
-          'User-Agent' => user_agent,
-          'X-Line-Application' => app
-        }
-
-        @agent = Mechanize.new
-        @agent.request_headers = @headers
-
-        @transport = Thrift::HTTPClientTransport.new(LineService::LINE_HTTP_URL)
-        @transport.add_headers(@headers)
-
-        # this code is not useful any more
-        # @transport = Thrift::BufferedTransport.new(@transport)
-        @protocol = Thrift::CompactProtocol.new(@transport)
-        @client = TalkService::Client.new(@protocol)
-
-        @transport_in = nil
-        @protocol_in = nil
-        @client_in = nil
+        self.init_agent()
 
         if conf.auth_token
           @cert = conf.auth_token
-          self.login_token()
+          begin
+            self.login_token()
+          rescue
+            @cert = nil
+            puts 'trying to another way..'
+            if @user and @pass
+              self.login()
+              self.login_token()
+            else
+              raise 'failed to login with token'
+            end
+          end
         else
           @provider = IdentityProvider::LINE
           self.login()
@@ -104,33 +90,64 @@ module Llama
         begin; self.refresh_rooms(); rescue; end
       end
 
-      def login_token()
-        @headers['X-Line-Access'] = @cert
+      def init_agent
+        version = '4.0.3'
+        os_version = '10.9.4-MAVERICKS-x64'
+        user_agent = "DESKTOP:MAC:#{os_version}(#{version})"
+        app = "DESKTOPMAC\t#{version}\tMAC\t\t#{os_version}"
+
+        hostname = Socket.gethostname()
+        @ip = IPSocket.getaddress(Socket.gethostbyname(hostname).first)
+
+        @headers = {
+          'User-Agent' => user_agent,
+          'X-Line-Application' => app
+        }
+
+        @agent = Mechanize.new
+        @agent.request_headers = @headers
 
         # close exists transport
-        @transport.close
+        @transport.close unless @transport.nil?
+
+        @transport = Thrift::HTTPClientTransport.new(LineService::LINE_HTTP_URL)
+        @transport.add_headers(@headers)
+
+        # this code is not useful any more
+        # @transport = Thrift::BufferedTransport.new(@transport)
+        @protocol = Thrift::CompactProtocol.new(@transport)
+        @client = TalkService::Client.new(@protocol)
+
+        @transport.open
+
+        @transport_in = nil
+        @protocol_in = nil
+        @client_in = nil
+      end
+
+      def login_token
+        puts 'login with token..'
+        @headers['X-Line-Access'] = @cert
+        @transport.add_headers(@headers)
+        @revision = @client.getLastOpRevision() if @revision == 0
 
         # make new transport layer
-        @transport = Thrift::HTTPClientTransport.new(LineService::LINE_HTTP_URL)
         @transport_in = Thrift::HTTPClientTransport.new(LineService::LINE_HTTP_IN_URL)
         # reset headers
         @transport_in.add_headers(@headers)
-        @transport.add_headers(@headers)
         # make protocol
-        @protocol = Thrift::CompactProtocol.new(@transport)
         @protocol_in = Thrift::CompactProtocol.new(@transport_in)
         # finally make client
-        @client = TalkService::Client.new(@protocol)
         @client_in = TalkService::Client.new(@protocol_in)
         # open
-        @transport.open
         @transport_in.open
 
-        @revision = @client.getLastOpRevision() if @revision == 0
-        p @revision
+        puts "success.. revision is #{@revision}"
       end
 
       def login()
+        puts 'login..'
+        @headers.delete('X-Line-Access')
         json = JSON.parse(@agent.get(LineService::LINE_SESSION_LINE_URL).body)
         data = OpenStruct.new(json)
         
@@ -143,6 +160,7 @@ module Llama
         pub.e = e
         cipher = pub.public_encrypt(passphrase).unpack('H*').first
 
+        p @client
         msg = @client.loginWithIdentityCredentialForCertificate(
           @user, @pass, keyname, cipher, true, @ip, @name, @provider, '')
         case msg.type
