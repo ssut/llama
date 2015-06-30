@@ -34,16 +34,16 @@ module Llama
 
         resp = Net::HTTP.get_response(URI.parse(url))
         result = JSON.parse(resp.body)
-        return self.fail if result.nil?
+        return self.fail(msg) if result.nil?
 
         response_data = result['responseData']
-        return self.fail if response_data.nil?
+        return self.fail(msg) if response_data.nil?
 
         result_size = response_data['results'].count
-        return self.fail unless result_size > 0
+        return self.fail(msg) unless result_size > 0
         url = result['responseData']['results'][rand(result_size)]['url']
 
-        self.fail unless msg.reply(:image, url)
+        self.fail(msg) unless msg.reply(:image, url)
       end
     end
   end
