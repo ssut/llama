@@ -3,6 +3,8 @@ require 'llama/listener'
 require 'llama/listener_list'
 require 'llama/callback'
 require 'llama/utils/object'
+require 'llama/plugin'
+require 'llama/plugin_list'
 
 require 'active_support/core_ext/object/try'
 require 'ostruct'
@@ -19,6 +21,7 @@ module Llama
       @semaphores_mutex = Mutex.new
       @semaphores = Hash.new { |h, k| h[k] = Mutex.new }
       @callback = Callback.new(self)
+      @plugins = PluginList.new(self)
 
       instance_eval(&b) if block_given?
     end
@@ -30,7 +33,8 @@ module Llama
       yield config
 
       require("llama/services/#{name}/#{name}")
-      cls = 'Llama::' << "#{name}".capitalize << '::' << "#{name}".capitalize << 'Service'
+      capitalized_name = name.to_s.capitalize
+      cls = 'Llama::' << capitalized_name << '::' << capitalized_name << 'Service'
       cls = Utils::class_from_string(cls)
       @service = cls.new(self, config)
     end
@@ -40,6 +44,19 @@ module Llama
       # ensure we always get the same mutex for a given name.
       semaphore = @semaphores_mutex.synchronize { @semaphores[name] }
       semaphore.synchronize(&block)
+    end
+
+    def plugin(*plugins)
+      plugins.each do |p|
+        raise "class needed" unless p.class == Class
+
+        puts "#{p} loaded"
+        @plugins.register(p)
+      end
+    end
+
+    def dispatch(msg)
+      @plugins.dispatch(msg)
     end
 
     def on(event, regex = //, *args, &block)

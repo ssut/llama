@@ -215,7 +215,7 @@ module Llama
       def handle_message(op)
         if msg = op.message
           msg = LlamaMessage.new(self, msg)
-          @bot.listeners.dispatch(:message, msg)
+          @bot.dispatch(msg)
         end
       end
     end
