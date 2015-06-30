@@ -56,11 +56,13 @@ module Llama
     end
 
     def dispatch(msg)
+      @listeners.dispatch(:message, msg)
       @plugins.dispatch(msg)
     end
 
-    def on(event, regex = //, *args, &block)
-      event = event.to_s.to_sym
+    def on(regex = //, *args, &block)
+      event = :message
+      regex = Regexp.new("^#{regex}$") if regex.class == String
 
       listener = Listener.new(self, event, regex, *args, &block)
       @listeners.register(listener)
