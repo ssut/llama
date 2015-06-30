@@ -10,7 +10,10 @@ module Llama
       end
 
       def match(pattern, dest=:execute)
-        pattern = Regexp.new("^#{pattern}$") if pattern.class == String
+        if pattern.class == String
+          pattern = Regexp.escape(regex)
+          pattern = Regexp.new("^#{pattern}$")
+        end
         @matchers[pattern] = dest
       end
     end

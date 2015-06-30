@@ -62,7 +62,10 @@ module Llama
 
     def on(regex = //, *args, &block)
       event = :message
-      regex = Regexp.new("^#{regex}$") if regex.class == String
+      if regex.class == String
+        regex = Regexp.escape(regex)
+        regex = Regexp.new("^#{regex}$")
+      end
 
       listener = Listener.new(self, event, regex, *args, &block)
       @listeners.register(listener)
