@@ -133,15 +133,22 @@ module Llama
       def get_member_ids
         @members.map { |m| m.id }
       end
+
+      def to_s
+        "<LineGroup #{@name}(#{@id}) members=#{@members.size}>"
+      end
     end
 
     class LineRoom < LineBase
       attr_reader :room
 
+      attr_reader :name
+
       def initialize(service, room)
         @service = service
 
         @room = room
+        @name = ''
         @id = room.mid
 
         @contacts = []
@@ -161,10 +168,17 @@ module Llama
       def get_contact_ids
         @contacts.map { |c| c.id }
       end
+
+      def to_s
+        "<LineRoom #{@id} contacts=#{@contacts.size}>"
+      end
     end
 
     class LineContact < LineBase
       attr_reader :contact
+
+      attr_reader :name
+      attr_reader :status_message
 
       def initialize(service, contact)
         @service = service
@@ -173,6 +187,19 @@ module Llama
         @id = contact.mid
         @name = contact.displayName
         @status_message = contact.statusMessage
+
+        service.contacts << self unless service.contacts.include?(self)
+      end
+
+      def reload!
+        begin
+        info = @service.client.getContacts([@id]).first
+        if info
+          @name = info.displayName
+          @status_message = info.statusMessage
+        end
+        rescue
+        end
       end
 
       def profile_image
@@ -185,6 +212,10 @@ module Llama
 
       def groups
         @service.groups.delete_if { |g| not g.get_member_ids.include?(@id) }
+      end
+
+      def to_s
+        "<LineContact #{@name}(#{@id}) status=#{@status_message}>"
       end
     end
   end
