@@ -27,8 +27,8 @@ module Llama
         @agent = Mechanize.new
       end
 
-      def fail(msg)
-        msg.reply(:text, '코드를 실행하지 못했습니다.')
+      def fail(msg, e)
+        msg.reply(:text, '코드를 실행하지 못했습니다: ' + e.inspect)
       end
 
       def execute(msg, captures)
@@ -47,8 +47,7 @@ module Llama
           raise unless result.include?('<pre>')
           result = result.split('<a name="output">')[1].split('<pre>')[2].split('</pre>')[0]
         rescue Exception => e
-          p e
-          return self.fail(msg)
+          return self.fail(msg, e)
         end
         result = result.gsub('&lt;', '<').gsub('&gt;', '>')
         result += "\n(#{res.uri.to_s})"
