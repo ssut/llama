@@ -41,23 +41,36 @@ module Llama
       # message target
       @target = case @type
       when ToType::USER
-        @sender
         @user = @sender
         @room = @sender
+        @sender
       when ToType::ROOM, ToType::GROUP
-        @receiver
         @user = @sender
         @room = @receiver
+        @receiver
+      end
+
+      if @user.class.to_s.include?('LineContact')
+        @user.reload!
       end
     end
 
-    def reply(type, content)
+    def reply_user(type, content)
+      if @user
+        self.reply(type, content, @user)
+      else
+        false
+      end
+    end
+
+    def reply(type, content, target=nil)
+      target = @target if target.nil?
       if type == :text
-        result = @target.send_message(content)
+        result = target.send_message(content)
       elsif type == :sticker
-        result = @target.send_sticker
+        result = target.send_sticker
       elsif type == :image
-        method = content.include?('http') ? @target.method(:send_image_url) : @target.method(:send_image)
+        method = content.include?('http') ? target.method(:send_image_url) : target.method(:send_image)
         result = method.call(content)
       end
 
