@@ -30,7 +30,6 @@ module Llama
           q: captures.join
         }
         url = 'http://ajax.googleapis.com/ajax/services/search/images?' + query.to_query
-        p query, url
 
         resp = Net::HTTP.get_response(URI.parse(url))
         result = JSON.parse(resp.body)

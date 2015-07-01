@@ -13,6 +13,8 @@ module Llama
         [:p, :print, :puts].each { |c| @priv.allow_method c }
         @priv.instances_of(Fixnum).allow :times
         @priv.instances_of(Fixnum).allow :+
+        @priv.instances_of(Fixnum).allow :*
+        @priv.instances_of(Fixnum).allow :-
       end
 
       def execute(msg, captures)
