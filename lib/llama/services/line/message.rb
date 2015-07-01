@@ -19,7 +19,7 @@ module Llama
 
       @msg = msg
       @id = msg.id
-      @raw = msg.text
+      @raw = msg.text ? msg.text : ''
       @time = DateTime.strptime((msg.createdTime / 1000).to_s, '%s')
       @type = msg.toType
       @content_type = msg.contentType

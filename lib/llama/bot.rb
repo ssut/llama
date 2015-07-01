@@ -58,6 +58,7 @@ module Llama
     end
 
     def dispatch(msg)
+      return if msg.nil?
       @listeners.dispatch(:message, msg)
       @plugins.dispatch(msg)
     end
