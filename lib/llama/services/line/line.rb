@@ -87,8 +87,8 @@ module Llama
 
         self.get_profile()
 
-        begin; self.refresh_groups(); rescue; end
         begin; self.refresh_contacts(); rescue; end
+        begin; self.refresh_groups(); rescue; end
         begin; self.refresh_rooms(); rescue; end
       end
 

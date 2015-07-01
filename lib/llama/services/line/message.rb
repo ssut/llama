@@ -30,8 +30,8 @@ module Llama
       @receiver = service.get_anything_by_id(msg.to)
 
       if @sender.nil? or @receiver.nil?
-        @service.refresh_groups()
         @service.refresh_contacts()
+        @service.refresh_groups()
         @service.refresh_rooms()
 
         @sender = service.get_anything_by_id(msg.from)
@@ -42,10 +42,12 @@ module Llama
       @target = case @type
       when ToType::USER
         @sender
-      when ToType::ROOM
+        @user = @sender
+        @room = @sender
+      when ToType::ROOM, ToType::GROUP
         @receiver
-      when ToType::GROUP
-        @receiver
+        @user = @sender
+        @room = @receiver
       end
     end
 
