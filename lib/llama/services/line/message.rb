@@ -26,8 +26,17 @@ module Llama
       @content_preview = msg.contentPreview
       @content_metadata = msg.contentMetadata
 
+      @raw_sender = msg.from
+      @raw_receiver = msg.to
       @sender = service.get_anything_by_id(msg.from)
       @receiver = service.get_anything_by_id(msg.to)
+
+      # If sender is not found, check member list of group chat sent to
+      if (@sender.nil? and @receiver.class.to_s.include?('LineGroup')) or 
+         (@sender.nil? and @receiver.class.to_s.include?('LineRoom')) then
+        sender = @receiver.contacts.find { |m| m.id == @raw_sender }
+        @sender = sender unless sender.nil?
+      end
 
       if @sender.nil? or @receiver.nil?
         @service.refresh_contacts()
@@ -36,6 +45,15 @@ module Llama
 
         @sender = service.get_anything_by_id(msg.from)
         @receiver = service.get_anything_by_id(msg.to)
+      end
+
+      # still one is nil
+      if @sender.nil? or @receiver.nil?
+        contacts = @service.get_contacts([@raw_sender, @raw_receiver])
+        if contacts and contacts.size == 2
+          @sender = Llama::Line::LineContact(@service, contacts[0])
+          @receiver = Llama::Line::LineContact(@service, contacts[1])
+        end
       end
 
       # message target
