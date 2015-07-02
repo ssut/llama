@@ -22,8 +22,6 @@ module Llama
       @args = options[:args]
       @execute_in_callback = options[:execute_in_callback]
       @block = block
-
-      @thread_group = ThreadGroup.new
     end
 
     def unregister
@@ -38,7 +36,10 @@ module Llama
     end
 
     def call(message, captures, user)
-      thread = Thread.new do
+      # @block.call(message, captures, *@args)
+      # return
+      EM.next_tick do
+        p Thread.current
         begin
           if @execute_in_callback
             @bot.callback.instance_exec(message, captures, *@args, &block)
@@ -51,9 +52,6 @@ module Llama
           # done
         end
       end
-
-      @thread_group.add(thread)
-      thread
     end
   end
 end

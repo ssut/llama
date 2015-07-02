@@ -25,7 +25,6 @@ module Llama
 
       def initialize(bot=nil)
         @bot = bot
-        @threads = ThreadGroup.new
 
         self.init if self.class.method_defined? :init
       end
@@ -40,8 +39,7 @@ module Llama
           match = msg.raw.match(pattern)
           next unless match
           captures = match.captures ||= []
-          thread = Thread.new { self.send(dest, msg, captures) }
-          @threads.add(thread)
+          self.send(dest, msg, captures)
         end
       end
 

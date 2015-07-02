@@ -10,16 +10,18 @@ module Llama
         def initialize(*args)
           super
           self.params ||= {}
-          if self.method == 'post'
-            self.params = params.has_key?(:body) ? params : { body: params }
-          else
-            self.params = params.has_key?(:query) ? params : { query: params }
-          end
-          self.params = { head: DEFAULT_HEADERS }.merge(params)
+          type = :query
+          type = :body if self.method == 'post'
+          self.params = params.has_key?(:body) ? params : { type => params }
+          self.params = { file: params[:body].delete(:file) }.merge(self.params) if type == :body and params[type].has_key?(:file)
+          headers = params[type].has_key?(:headers) ? { head: params[type].delete(:headers) } : {}
+          self.params = { head: DEFAULT_HEADERS }.merge(headers).merge(params)
+          p self.params
           logger.info("HTTP-REQUEST: #{url} #{params}")
         end
 
         def call(success_block, &fail_block)
+          p 'called'
           http.errback(&fail_block) unless fail_block.nil?
           http.callback do
             success(&success_block)
@@ -37,14 +39,14 @@ module Llama
           yield Response.new(http, self)
         end
 
+        def connection
+          @connection ||= EM::HttpRequest.new(url, CONNECTION_SETTINGS)
+        end
+
         def http(options = { redirects: 2 })
           @http ||= connection.send(method, params.merge(options))
         rescue => e
           instance_exec(e, &ERROR_CALLBACK)
-        end
-
-        def connection
-          @connection ||= EM::HttpRequest.new(url, CONNECTION_SETTINGS)
         end
       end
 
