@@ -1,14 +1,21 @@
 # coding: utf-8
+require 'eventmachine'
+require 'em-http-request'
+require 'wrest'
+require 'wrest/multipart'
+require 'active_support/core_ext/object/try'
+require 'ostruct'
+require 'tempfile'
+
+require 'llama/patch'
 require 'llama/logger'
+require 'llama/utils/object'
+require 'llama/utils/http'
 require 'llama/listener'
 require 'llama/listener_list'
 require 'llama/callback'
-require 'llama/utils/object'
 require 'llama/plugin'
 require 'llama/plugin_list'
-
-require 'active_support/core_ext/object/try'
-require 'ostruct'
 
 module Llama
   class Bot
@@ -16,16 +23,20 @@ module Llama
 
     attr_reader :callback
     attr_reader :listeners
+    attr_accessor :messages
 
     def initialize(&b)
       @listeners = ListenerList.new
       @service = nil
+      @service_conf = nil
       @callback = Callback.new(self)
       @semaphores_mutex = Mutex.new
       @semaphores = Hash.new { |h, k| h[k] = Mutex.new }
       @callback = Callback.new(self)
       @plugins_classes = []
       @plugins = PluginList.new(self)
+      @messages = EM::Channel.new
+      Wrest::AsyncRequest.default_to_em!
 
       instance_eval(&b) if block_given?
     end
@@ -35,12 +46,8 @@ module Llama
 
       config = OpenStruct.new(:username => '', :password => '', :name => '')
       yield config
-
-      require("llama/services/#{name}/#{name}")
-      capitalized_name = name.to_s.capitalize
-      cls = 'Llama::' << capitalized_name << '::' << capitalized_name << 'Service'
-      cls = Utils::class_from_string(cls)
-      @service = cls.new(self, config)
+      @service = name
+      @service_conf = config
     end
 
     def synchronize(name, &block)
@@ -76,14 +83,30 @@ module Llama
       return listener
     end
 
-    def start
-      @plugins_classes.each do |p|
-        logger.info("Load Plugin: #{p}")
-        @plugins.register(p)
-      end
+    def start!(&b)
+      EM.run do
+        name = @service
+        require("llama/services/#{name}/#{name}")
+        capitalized_name = name.to_s.capitalize
+        cls = 'Llama::' << capitalized_name << '::' << capitalized_name << 'Service'
+        cls = Utils::class_from_string(cls)
+        @service = cls.new(self, @service_conf)
+        yield @service
 
-      logger.info('Start Service')
-      @service.start
+        @plugins_classes.each do |p|
+          logger.info("Load Plugin: #{p}")
+          @plugins.register(p)
+        end
+
+        @messages.subscribe do |msg|
+          self.dispatch(msg)
+        end
+
+        logger.info('Start Service')
+        EM.defer do
+          @service.start!
+        end
+      end
     end
   end
 end
