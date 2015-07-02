@@ -86,7 +86,7 @@ module Llama
       if type == :text
         result = target.send_message(content)
       elsif type == :sticker
-        result = target.send_sticker
+        result = target.send_sticker(*content)
       elsif type == :image
         method = content.include?('http') ? target.method(:send_image_url) : target.method(:send_image)
         result = method.call(content)
