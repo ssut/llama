@@ -227,7 +227,6 @@ module Llama
         loop do
           begin
             ops = @client_in.fetchOperations(@revision, 50)
-            p ops
           rescue SystemExit, Interrupt
             break
           rescue Net::ReadTimeout => e
@@ -241,7 +240,7 @@ module Llama
           next if ops.nil?
 
           ops.each do |op|
-            # logger.debug("A new operation is retrieved: #{op.inspect}")
+            logger.debug("A new operation is retrieved: #{op.inspect}")
             case op.type
             when OpType::END_OF_OPERATION
             when OpType::ADD_CONTACT
@@ -277,10 +276,6 @@ module Llama
             send_checked(target, op.message.id)
           elsif op.type == OpType::NOTIFIED_INVITE_INTO_ROOM
             room = get_anything_by_id(op.param1)
-            if room.nil?
-
-            end
-            p room
           end
           EM.next_tick { @ops.pop(&handler) }
         end
