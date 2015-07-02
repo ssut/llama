@@ -1,5 +1,4 @@
 require 'open-uri'
-require 'tempfile'
 
 # Don't allow downloaded files to be created as StringIO. Force a tempfile to be created.
 # http://stackoverflow.com/q/10496874
@@ -9,18 +8,19 @@ OpenURI::Buffer.const_set 'StringMax', 0
 module Llama
   module Line
     class LineBase
+      include Llama::Utils
       attr_reader :service
       attr_reader :id
 
       def send_message(text)
         begin
           message = Message.new(to: @id, text: text)
-          @service.send_message(message)
+          message = @service.send_message(message)
         rescue Exception => e
           raise e
         end
 
-        true
+        message
       end
 
       def send_sticker(id='13', package='1', version='100', text='[null]')
@@ -48,27 +48,27 @@ module Llama
         message.contentPreview = nil
         message.contentMetadata = nil
 
-        message_id = @service.send_message(message).id
-        params = {
-          'name' => 'media',
-          'oid' => message_id,
-          'size' => File.size(path),
-          'type' => 'image',
-          'ver' => '1.0'
-        }
-        data = {
-          'params' => JSON.dump(params),
-          'file' => File.new(path)
-        }
+        @service.send_message(message) do |msg|
+          msg_id = msg.id
+          params = {
+            'name' => 'media',
+            'oid' => msg_id,
+            'size' => File.size(path),
+            'type' => 'image',
+            'ver' => '1.0'
+          }
+          data = {
+            'params' => JSON.dump(params),
+            :file => UploadIO.new(File.open(path), 'image/jpeg')
+          }
 
-        result = true
-        begin
-          @service.agent.post('http://os.line.naver.jp/talk/m/upload.nhn', data)
-        rescue Exception => e
-          result = false
+          'http://os.line.naver.jp/talk/m/upload.nhn'.to_uri.post_multipart_async(data, @service.headers) do |cb|
+            cb.on(200..201) do |resp|
+            end
+          end
         end
 
-        result
+        true
       end
 
       def send_image_url(url)

@@ -14,18 +14,18 @@ module Llama
         raise 'This class cannot be used directly.'
       end
 
-      def send_message(message, seq=0)
-        begin
-          return @client.sendMessage(seq, message)
-        rescue TalkException => e
-          self.revive()
+      def _send_message(message, seq=0)
           begin
             return @client.sendMessage(seq, message)
-          rescue Exception => e
-            puts "send error"
-            return false
+          rescue TalkException => e
+            self.revive()
+            begin
+              return @client.sendMessage(seq, message)
+            rescue Exception => e
+              puts "send error"
+              return false
+            end
           end
-        end
       end
 
       def get_profile

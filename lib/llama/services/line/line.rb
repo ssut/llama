@@ -2,6 +2,7 @@ lib = File.join(File.dirname(__FILE__), 'thrift')
 $:.unshift lib unless $:.include?(lib)
 
 require 'thrift'
+require 'thrift_client'
 require 'openssl'
 require 'socket'
 require 'base64'
@@ -27,6 +28,7 @@ module Llama
 
       attr_reader :client
       attr_reader :agent
+      attr_reader :headers
       attr_reader :cert
 
       attr_reader :profile
@@ -59,30 +61,34 @@ module Llama
         # Certificate
         @cert = nil
 
+        # Message Queue
+        @queue = EM::Queue.new
+        @mutex = Mutex.new
+
         @name = conf.name
         @user = conf.username
         @pass = conf.password
 
         self.init_agent()
 
-        if conf.auth_token
+        # if conf.auth_token
           @cert = conf.auth_token
-          begin
+        #   begin
             self.login_token()
-          rescue
-            @cert = nil
-            puts 'trying to another way..'
-            if @user and @pass
-              self.login()
-              self.login_token()
-            else
-              raise 'failed to login with token'
-            end
-          end
-        else
-          @provider = IdentityProvider::LINE
-          self.login()
-        end
+        #   rescue
+        #     @cert = nil
+        #     puts 'trying to another way..'
+        #     if @user and @pass
+        #       self.login()
+        #       self.login_token()
+        #     else
+        #       raise 'failed to login with token'
+        #     end
+        #   end
+        # else
+          # @provider = IdentityProvider::LINE
+          # self.login()
+        # end
         logger.info("You have successfully logged in to the LINE")
 
         self.get_profile()
@@ -122,8 +128,23 @@ module Llama
 
         @transport.open
 
+        @options = {
+          :retries => 5,
+          :protocol => Thrift::CompactProtocol,
+          :transport => Thrift::HTTPClientTransport
+        }
+
+        # @client = ThriftClient.new(TalkService::Client, LineService::LINE_HTTP_URL, @options)
+        
+
+        # @client.connect!
+        # @transport = @client.current_server.connection.transport
+        
+        # @client.add_callback :before_method do |*args|
+        #   p *args
+        # end
+
         @transport_in = nil
-        @protocol_in = nil
         @client_in = nil
       end
 
@@ -131,18 +152,13 @@ module Llama
         logger.info("Trying to log in with given credentials")
         @headers['X-Line-Access'] = @cert
         @transport.add_headers(@headers)
+        p @client
         @revision = @client.getLastOpRevision() if @revision == 0
 
-        # make new transport layer
-        @transport_in = Thrift::HTTPClientTransport.new(LineService::LINE_HTTP_IN_URL)
-        # reset headers
+        @client_in = ThriftClient.new(TalkService::Client, LineService::LINE_HTTP_IN_URL, @options)
+        @client_in.connect!
+        @transport_in = @client_in.current_server.connection.transport
         @transport_in.add_headers(@headers)
-        # make protocol
-        @protocol_in = Thrift::CompactProtocol.new(@transport_in)
-        # finally make client
-        @client_in = TalkService::Client.new(@protocol_in)
-        # open
-        @transport_in.open
 
         logger.info("Revision is #{@revision}")
       end
@@ -162,7 +178,6 @@ module Llama
         pub.e = e
         cipher = pub.public_encrypt(passphrase).unpack('H*').first
 
-        p @client
         msg = @client.loginWithIdentityCredentialForCertificate(
           @user, @pass, keyname, cipher, true, @ip, @name, @provider, '')
         case msg.type
@@ -202,7 +217,8 @@ module Llama
         true
       end
 
-      def start
+      def start!
+        EM.next_tick { handle_message }
         loop do
           begin
             ops = @client_in.fetchOperations(@revision, 50)
@@ -219,7 +235,7 @@ module Llama
           next if ops.nil?
 
           ops.each do |op|
-            logger.debug("A new operation is retrieved: #{op}")
+            logger.debug("A new operation is retrieved: #{op.inspect}")
             case op.type
             when OpType::END_OF_OPERATION
             when OpType::ADD_CONTACT
@@ -230,7 +246,9 @@ module Llama
             when OpType::LEAVE_GROUP
             when OpType::SEND_MESSAGE
             when OpType::RECEIVE_MESSAGE
-              self.handle_message(op)
+              if msg = op.message
+                @bot.messages << LlamaMessage.new(self, msg)
+              end
             end
 
             @revision = op.revision if op.revision > @revision
@@ -238,11 +256,18 @@ module Llama
         end
       end
 
-      def handle_message(op)
-        if msg = op.message
-          msg = LlamaMessage.new(self, msg)
-          @bot.dispatch(msg)
+      def handle_message
+        sender = Proc.new do |bl|
+          res = _send_message(bl.msg)
+          bl.cb.call(res) unless bl.cb.nil?
+          EM.next_tick { @queue.pop(&sender) }
         end
+        @queue.pop(&sender)
+      end
+
+      MessageBlock = Struct.new(:msg, :cb)
+      def send_message(msg, &cb)
+        @queue << MessageBlock.new(msg, cb)
       end
     end
   end
