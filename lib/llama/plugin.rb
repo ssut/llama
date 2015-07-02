@@ -30,16 +30,18 @@ module Llama
       end
 
       def dispatch(msg)
-        self.class.matchers.each do |pattern, dest|
-          unless self.class.method_defined? dest
-            puts "method does not exist"
-            break
-          end
+      EM.next_tick do
+          self.class.matchers.each do |pattern, dest|
+            unless self.class.method_defined? dest
+              puts "method does not exist"
+              break
+            end
 
-          match = msg.raw.match(pattern)
-          next unless match
-          captures = match.captures ||= []
-          self.send(dest, msg, captures)
+            match = msg.raw.match(pattern)
+            next unless match
+            captures = match.captures ||= []
+            self.send(dest, msg, captures)
+          end
         end
       end
 

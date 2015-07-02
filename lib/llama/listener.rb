@@ -36,10 +36,7 @@ module Llama
     end
 
     def call(message, captures, user)
-      # @block.call(message, captures, *@args)
-      # return
       EM.next_tick do
-        p Thread.current
         begin
           if @execute_in_callback
             @bot.callback.instance_exec(message, captures, *@args, &block)
