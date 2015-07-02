@@ -4,6 +4,7 @@ module Llama
   module EmbedPlugin
     class CodepadPlugin
       include Llama::Plugin
+      include Llama::Utils
       match /^codepad (?<lang>[\w]+) (?<code>.+)/
 
       TYPES = {
@@ -23,12 +24,9 @@ module Llama
         'tcl' => 'Tcl'
       }
 
-      def init
-        @agent = Mechanize.new
-      end
 
-      def fail(msg, e)
-        msg.reply(:text, '코드를 실행하지 못했습니다: ' + e.inspect)
+      def fail(msg)
+        msg.reply(:text, '코드를 실행하지 못했습니다.')
       end
 
       def execute(msg, captures)
@@ -36,23 +34,26 @@ module Llama
         msg.reply(:text, '지원하지 않는 언어입니다.') unless TYPES.include?(lang)
 
         data = {
-          code: code,
-          lang: TYPES[lang],
-          submit: 'Submit',
-          run: 'True'
+          'code' => code,
+          'lang' => TYPES[lang],
+          'submit' => 'Submit',
+          'run' => 'True'
         }
-        begin
-          res = @agent.post('http://codepad.org', data)
-          result = res.body
-          raise unless result.include?('<pre>')
-          result = result.split('<a name="output">')[1].split('<pre>')[2].split('</pre>')[0]
-        rescue Exception => e
-          return self.fail(msg, e)
-        end
-        result = result.gsub('&lt;', '<').gsub('&gt;', '>')
-        result += "\n(#{res.uri.to_s})"
-
-        msg.reply(:text, result)
+        HTTP::Request.new('http://codepad.org', data, 'post').call(Proc.new { |resp|
+          begin
+            result = resp.body
+            raise unless result.include?('<pre>')
+            result = result.split('<a name="output">')[1].split('<pre>')[2].split('</pre>')[0]
+            result = result.gsub('&lt;', '<').gsub('&gt;', '>')
+            result += "\n(#{resp.url})"
+          rescue Exception => e
+            fail(msg)
+          else
+            msg.reply(:text, result)
+          end
+        }) { |e|
+          fail(msg)
+        }
       end
     end
   end
