@@ -1,10 +1,3 @@
-require 'open-uri'
-
-# Don't allow downloaded files to be created as StringIO. Force a tempfile to be created.
-# http://stackoverflow.com/q/10496874
-OpenURI::Buffer.send :remove_const, 'StringMax' if OpenURI::Buffer.const_defined?('StringMax')
-OpenURI::Buffer.const_set 'StringMax', 0
-
 module Llama
   module Line
     class LineBase
@@ -73,12 +66,19 @@ module Llama
 
       def send_image_url(url)
         begin
-          f = open(url, {ssl_verify_mode: OpenSSL::SSL::VERIFY_NONE, read_timeout: 5})
-        rescue
+          http = EM::HttpRequest.new(url, :connect_timeout => 2, :inactivity_timeout => 5).get
+          file = Tempfile.new('')
+          http.stream { |chunk|
+            file.write(chunk)
+          }
+          http.callback {
+            file.close
+            self.send_image(file.path)
+          }
+        rescue Exception => e
           return false
         end
-
-        self.send_image(f.path)
+        true
       end
     end
 
