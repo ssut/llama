@@ -63,7 +63,7 @@ module Llama
 
         # Message Queue
         @queue = EM::Queue.new
-        @mutex = Mutex.new
+        @ops = EM::Queue.new
 
         @name = conf.name
         @user = conf.username
@@ -71,24 +71,24 @@ module Llama
 
         self.init_agent()
 
-        # if conf.auth_token
+        if conf.auth_token
           @cert = conf.auth_token
-        #   begin
+          begin
             self.login_token()
-        #   rescue
-        #     @cert = nil
-        #     puts 'trying to another way..'
-        #     if @user and @pass
-        #       self.login()
-        #       self.login_token()
-        #     else
-        #       raise 'failed to login with token'
-        #     end
-        #   end
-        # else
-          # @provider = IdentityProvider::LINE
-          # self.login()
-        # end
+          rescue
+            @cert = nil
+            puts 'trying to another way..'
+            if @user and @pass
+              self.login()
+              self.login_token()
+            else
+              raise 'failed to login with token'
+            end
+          end
+        else
+          @provider = IdentityProvider::LINE
+          self.login()
+        end
         logger.info("You have successfully logged in to the LINE")
 
         self.get_profile()
@@ -122,7 +122,7 @@ module Llama
         @transport.add_headers(@headers)
 
         # this code is not useful any more
-        # @transport = Thrift::BufferedTransport.new(@transport)
+        @transport = Thrift::BufferedTransport.new(@transport)
         @protocol = Thrift::CompactProtocol.new(@transport)
         @client = TalkService::Client.new(@protocol)
 
@@ -134,16 +134,6 @@ module Llama
           :transport => Thrift::HTTPClientTransport
         }
 
-        # @client = ThriftClient.new(TalkService::Client, LineService::LINE_HTTP_URL, @options)
-        
-
-        # @client.connect!
-        # @transport = @client.current_server.connection.transport
-        
-        # @client.add_callback :before_method do |*args|
-        #   p *args
-        # end
-
         @transport_in = nil
         @client_in = nil
       end
@@ -151,8 +141,22 @@ module Llama
       def login_token
         logger.info("Trying to log in with given credentials")
         @headers['X-Line-Access'] = @cert
+
+        @transport.close unless @transport.nil?
+        @client_in.close unless @client_in.nil?
+
+        # close existing transport
+        @transport = Thrift::HTTPClientTransport.new(LineService::LINE_HTTP_URL)
         @transport.add_headers(@headers)
-        p @client
+
+        # this code is not useful any more
+        @transport = Thrift::BufferedTransport.new(@transport)
+        
+        # make new cli
+        @protocol = Thrift::CompactProtocol.new(@transport)
+        @client = TalkService::Client.new(@protocol)
+
+        @transport.open
         @revision = @client.getLastOpRevision() if @revision == 0
 
         @client_in = ThriftClient.new(TalkService::Client, LineService::LINE_HTTP_IN_URL, @options)
@@ -219,9 +223,11 @@ module Llama
 
       def start!
         EM.next_tick { handle_message }
+        EM.next_tick { handle_ops }
         loop do
           begin
             ops = @client_in.fetchOperations(@revision, 50)
+            p ops
           rescue SystemExit, Interrupt
             break
           rescue Net::ReadTimeout => e
@@ -235,7 +241,7 @@ module Llama
           next if ops.nil?
 
           ops.each do |op|
-            logger.debug("A new operation is retrieved: #{op.inspect}")
+            # logger.debug("A new operation is retrieved: #{op.inspect}")
             case op.type
             when OpType::END_OF_OPERATION
             when OpType::ADD_CONTACT
@@ -244,16 +250,41 @@ module Llama
             when OpType::SEND_CHAT_CHECKED
             when OpType::LEAVE_ROOM
             when OpType::LEAVE_GROUP
+            when OpType::NOTIFIED_INVITE_INTO_ROOM
+              @ops << op
             when OpType::SEND_MESSAGE
             when OpType::RECEIVE_MESSAGE
               if msg = op.message
                 @bot.messages << LlamaMessage.new(self, msg)
+                @ops << op
               end
             end
 
             @revision = op.revision if op.revision > @revision
           end
         end
+      end
+
+      def handle_ops
+        handler = Proc.new do |op|
+          if op.type == OpType::RECEIVE_MESSAGE
+            target = case op.message.toType
+            when ToType::USER
+              op.message.from
+            when ToType::ROOM, ToType::GROUP
+              op.message.to
+            end
+            send_checked(target, op.message.id)
+          elsif op.type == OpType::NOTIFIED_INVITE_INTO_ROOM
+            room = get_anything_by_id(op.param1)
+            if room.nil?
+
+            end
+            p room
+          end
+          EM.next_tick { @ops.pop(&handler) }
+        end
+        @ops.pop(&handler)
       end
 
       def handle_message

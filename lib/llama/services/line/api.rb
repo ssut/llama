@@ -14,6 +14,10 @@ module Llama
         raise 'This class cannot be used directly.'
       end
 
+      def send_checked(consumer, id, seq=0)
+        @client.sendChatChecked(seq, consumer, id)
+      end
+
       def _send_message(message, seq=0)
           begin
             return @client.sendMessage(seq, message)
