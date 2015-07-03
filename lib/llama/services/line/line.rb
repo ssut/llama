@@ -1,3 +1,4 @@
+# encoding: utf-8
 lib = File.join(File.dirname(__FILE__), 'thrift')
 $:.unshift lib unless $:.include?(lib)
 
@@ -253,7 +254,8 @@ module Llama
               @ops << op
             when OpType::NOTIFIED_UPDATE_GROUP
               @ops << op
-            when OpType::NOTIFIED_INVITE_INTO_ROOM
+            when OpType::NOTIFIED_INVITE_INTO_ROOM, OpType::NOTIFIED_INVITE_INTO_GROUP
+              @ops << op
             when OpType::SEND_MESSAGE
             when OpType::RECEIVE_MESSAGE
               if msg = op.message
@@ -294,6 +296,19 @@ module Llama
               if group and current = @groups.find { |g| g.id == id }
                 current.name = group.name
               end
+            end
+
+          when OpType::NOTIFIED_INVITE_INTO_ROOM
+            if id = op.param1
+              msg = Message.new(to: id, text: '안녕하세요!')
+              send_message(msg)
+            end
+
+          when OpType::NOTIFIED_INVITE_INTO_GROUP
+            if id = op.param1
+              @client.acceptGroupInvitation(0, id)
+              msg = Message.new(to: id, text: '안녕하세요!')
+              send_message(msg)
             end
           end
           EM.next_tick { @ops.pop(&handler) }
