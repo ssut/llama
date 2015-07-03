@@ -260,7 +260,6 @@ module Llama
             when OpType::RECEIVE_MESSAGE
               if msg = op.message
                 @bot.messages << LlamaMessage.new(self, msg)
-                @ops << op
               end
             end
 
@@ -273,13 +272,7 @@ module Llama
         handler = Proc.new do |op|
           case op.type
           when OpType::RECEIVE_MESSAGE
-            target = case op.message.toType
-            when ToType::USER
-              op.message.from
-            when ToType::ROOM, ToType::GROUP
-              op.message.to
-            end
-            send_checked(target, op.message.id)
+            send_checked(op.param1, op.param2)
 
           when OpType::NOTIFIED_UPDATE_PROFILE
             if id = op.param1
@@ -320,14 +313,16 @@ module Llama
         sender = Proc.new do |bl|
           res = _send_message(bl.msg)
           bl.cb.call(res) unless bl.cb.nil?
+          @ops << Operation.new(type: OpType::RECEIVE_MESSAGE, param1: bl.refer.raw_target, param2: bl.refer.id) unless bl.refer.nil?
+          send_checked(bl.refer.raw_target, bl.refer.id)
           EM.next_tick { @queue.pop(&sender) }
         end
         @queue.pop(&sender)
       end
 
-      MessageBlock = Struct.new(:msg, :cb)
-      def send_message(msg, &cb)
-        @queue << MessageBlock.new(msg, cb)
+      MessageBlock = Struct.new(:msg, :refer, :cb)
+      def send_message(msg, refer, &cb)
+        @queue << MessageBlock.new(msg, refer, cb)
       end
     end
   end
