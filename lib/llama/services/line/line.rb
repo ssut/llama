@@ -249,8 +249,11 @@ module Llama
             when OpType::SEND_CHAT_CHECKED
             when OpType::LEAVE_ROOM
             when OpType::LEAVE_GROUP
-            when OpType::NOTIFIED_INVITE_INTO_ROOM
+            when OpType::NOTIFIED_UPDATE_PROFILE
               @ops << op
+            when OpType::NOTIFIED_UPDATE_GROUP
+              @ops << op
+            when OpType::NOTIFIED_INVITE_INTO_ROOM
             when OpType::SEND_MESSAGE
             when OpType::RECEIVE_MESSAGE
               if msg = op.message
@@ -266,7 +269,8 @@ module Llama
 
       def handle_ops
         handler = Proc.new do |op|
-          if op.type == OpType::RECEIVE_MESSAGE
+          case op.type
+          when OpType::RECEIVE_MESSAGE
             target = case op.message.toType
             when ToType::USER
               op.message.from
@@ -274,8 +278,23 @@ module Llama
               op.message.to
             end
             send_checked(target, op.message.id)
-          elsif op.type == OpType::NOTIFIED_INVITE_INTO_ROOM
-            room = get_anything_by_id(op.param1)
+
+          when OpType::NOTIFIED_UPDATE_PROFILE
+            if id = op.param1
+              user = @client.getContacts([id]).first
+              if user and current = @contacts.find { |c| c.id == id }
+                current.name = user.displayName
+                current.status_message = user.statusMessage
+              end
+            end
+
+          when OpType::NOTIFIED_UPDATE_GROUP
+            if id = op.param1
+              group = @client.getGroup(id)
+              if group and current = @groups.find { |g| g.id == id }
+                current.name = group.name
+              end
+            end
           end
           EM.next_tick { @ops.pop(&handler) }
         end

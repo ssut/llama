@@ -67,10 +67,6 @@ module Llama
         @room = @receiver
         @receiver
       end
-
-      if @user.class.to_s.include?('LineContact')
-        @user.reload!
-      end
     end
 
     def reply_user(type, content)

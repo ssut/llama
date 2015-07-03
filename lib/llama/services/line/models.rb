@@ -83,7 +83,7 @@ module Llama
     end
 
     class LineGroup < LineBase
-      attr_reader :name
+      attr_accessor :name
       attr_reader :is_joined
       attr_reader :creator
       attr_reader :members
@@ -177,8 +177,8 @@ module Llama
     class LineContact < LineBase
       attr_reader :contact
 
-      attr_reader :name
-      attr_reader :status_message
+      attr_accessor :name
+      attr_accessor :status_message
 
       def initialize(service, contact)
         @service = service
@@ -189,17 +189,6 @@ module Llama
         @status_message = contact.statusMessage
 
         service.contacts << self unless service.contacts.include?(self)
-      end
-
-      def reload!
-        begin
-        info = @service.client.getContacts([@id]).first
-        if info
-          @name = info.displayName
-          @status_message = info.statusMessage
-        end
-        rescue
-        end
       end
 
       def profile_image
