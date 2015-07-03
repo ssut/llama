@@ -47,7 +47,7 @@ $ bundle install
 
 To use llama, create a file like this:
 
-Note that in this example: I assume that you've created *a file* in your cloned directory, so you don't need to write two lines of code as below.
+Note that in this example: I assume that you've created *a file* in your cloned directory, so you don't need to write two lines of code as below when you've installed with bundler.
 
 ```ruby
 lib = File.join(File.dirname(__FILE__), 'lib')
