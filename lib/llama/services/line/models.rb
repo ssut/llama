@@ -5,10 +5,10 @@ module Llama
       attr_reader :service
       attr_reader :id
 
-      def send_message(text)
+      def send_message(text, refer)
         begin
           message = Message.new(to: @id, text: text)
-          message = @service.send_message(message)
+          message = @service.send_message(message, refer)
         rescue Exception => e
           raise e
         end
@@ -16,7 +16,7 @@ module Llama
         message
       end
 
-      def send_sticker(id='13', package='1', version='100', text='[null]')
+      def send_sticker(id='13', package='1', version='100', text='[null]', refer)
         begin
           message = Message.new(to: @id, text: '')
           message.contentType = ContentType::STICKER
@@ -27,7 +27,7 @@ module Llama
             'STKVER' => version,
             'STKTXT' => text
           }
-          @service.send_message(message)
+          @service.send_message(message, refer)
         rescue Exception => e
           raise e
         end
@@ -35,13 +35,13 @@ module Llama
         true
       end
 
-      def send_image(path)
+      def send_image(path, refer)
         message = Message.new(to: @id, text: nil)
         message.contentType = ContentType::IMAGE
         message.contentPreview = nil
         message.contentMetadata = nil
 
-        @service.send_message(message) do |msg|
+        @service.send_message(message, refer) do |msg|
           msg_id = msg.id
           params = {
             'name' => 'media',
@@ -64,7 +64,7 @@ module Llama
         true
       end
 
-      def send_image_url(url)
+      def send_image_url(url, refer)
         begin
           http = EM::HttpRequest.new(url, :connect_timeout => 2, :inactivity_timeout => 5).get
           file = Tempfile.new('')
@@ -73,7 +73,7 @@ module Llama
           }
           http.callback {
             file.close
-            self.send_image(file.path)
+            self.send_image(file.path, refer)
           }
         rescue Exception => e
           return false

@@ -5,11 +5,15 @@ module Llama
     # @return [String]
     attr_reader :raw
 
+    attr_reader :id
+
     # @return [Time]
     attr_reader :time
 
     # @return [User] The user who sent this message
     attr_reader :user
+
+    attr_reader :raw_target, :target
 
     # @return [Room] The room in which this message was sent
     attr_reader :room
@@ -67,25 +71,23 @@ module Llama
         @room = @receiver
         @receiver
       end
+      @raw_target = @target.nil? ? '' : @target.id
+      # p @raw_target, @id
     end
 
     def reply_user(type, content)
-      if @user
-        self.reply(type, content, @user)
-      else
-        false
-      end
+      @user ? self.reply(type, content, @user) : false
     end
 
     def reply(type, content, target=nil)
       target = @target if target.nil?
       if type == :text
-        result = target.send_message(content)
+        result = target.send_message(content, self)
       elsif type == :sticker
-        result = target.send_sticker(*content)
+        result = target.send_sticker(*content, self)
       elsif type == :image
         method = content.include?('http') ? target.method(:send_image_url) : target.method(:send_image)
-        result = method.call(content)
+        result = method.call(content, self)
       end
 
       result
