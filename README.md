@@ -110,6 +110,15 @@ bot.start! do |service|
 end
 ```
 
+## TODO
+
+* Messanger event handler (:enter, :leave, :new\_member, :leave\_member)
+* Default error listener
+* Internal database support (SQLite3)
+* CLI for managing bot
+    * Reload plugins without restart
+* Documentation
+
 ## Contributing
 
 If there are bugs or things you would like to improve, fork the project, and implement your awesome feature or patch in its own branch, then send me a pull request here!
