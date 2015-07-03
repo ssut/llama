@@ -313,8 +313,10 @@ module Llama
         sender = Proc.new do |bl|
           res = _send_message(bl.msg)
           bl.cb.call(res) unless bl.cb.nil?
-          @ops << Operation.new(type: OpType::RECEIVE_MESSAGE, param1: bl.refer.raw_target, param2: bl.refer.id) unless bl.refer.nil?
-          send_checked(bl.refer.raw_target, bl.refer.id)
+          unless bl.refer.nil? and bl.refer.checked
+            @ops << Operation.new(type: OpType::RECEIVE_MESSAGE, param1: bl.refer.raw_target, param2: bl.refer.id)
+            bl.refer.checked = true
+          end
           EM.next_tick { @queue.pop(&sender) }
         end
         @queue.pop(&sender)

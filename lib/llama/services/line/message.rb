@@ -18,6 +18,8 @@ module Llama
     # @return [Room] The room in which this message was sent
     attr_reader :room
 
+    attr_accessor :checked
+
     def initialize(service, msg)
       @service = service
 
@@ -34,6 +36,8 @@ module Llama
       @raw_receiver = msg.to
       @sender = service.get_anything_by_id(msg.from)
       @receiver = service.get_anything_by_id(msg.to)
+
+      @checked = false
 
       # If sender is not found, check member list of group chat sent to
       if (@sender.nil? and @receiver.class.to_s.include?('LineGroup')) or 
