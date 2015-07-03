@@ -1,5 +1,7 @@
 # llama (라마, ラマ)
 
+![](http://i.imgur.com/b4cAIvF.png)
+
 Llama is a simple bot framework written in [Ruby](https://www.ruby-lang.org/) and [EventMachine](http://www.rubyeventmachine.com/). It will prettttty much do whatever you want it to do, and it provides a simple interface based on plugins and listeners.
 
 It is very easy to get up and running! Let's try!
