@@ -22,11 +22,12 @@ module Llama
 
       def execute(msg, captures)
         query = {
+          start: (rand(5) + 1).to_s,
           rsz: '8',
           v: '1.0',
           ipaddr: self.random_ip,
-          safe: 'moderate',
-          imgsz: 'small|medium',
+          safe: 'off',
+          imgsz: 'small|medium|large',
           q: captures.join
         }
         url = 'http://ajax.googleapis.com/ajax/services/search/images?' + query.to_query
@@ -42,7 +43,9 @@ module Llama
         return self.fail(msg) unless result_size > 0
         url = result['responseData']['results'][rand(result_size)]['url']
 
-        self.fail(msg) unless msg.reply(:image, url)
+        msg.reply(:image, url) do |success, _|
+          fail(msg) unless success
+        end
       end
     end
   end

@@ -6,6 +6,7 @@ require 'wrest/multipart'
 require 'active_support/core_ext/object/try'
 require 'ostruct'
 require 'tempfile'
+require 'fastimage'
 
 require 'llama/patch'
 require 'llama/logger'

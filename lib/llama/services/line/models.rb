@@ -35,7 +35,7 @@ module Llama
         true
       end
 
-      def send_image(path, refer)
+      def send_image(path, refer, &callback)
         message = Message.new(to: @id, text: nil)
         message.contentType = ContentType::IMAGE
         message.contentPreview = nil
@@ -57,14 +57,13 @@ module Llama
 
           'http://os.line.naver.jp/talk/m/upload.nhn'.to_uri.post_multipart_async(data, @service.headers) do |cb|
             cb.on(200..201) do |resp|
+              callback.call(true, msg) unless callback.nil?
             end
           end
         end
-
-        true
       end
 
-      def send_image_url(url, refer)
+      def send_image_url(url, refer, &cb)
         begin
           http = EM::HttpRequest.new(url, :connect_timeout => 2, :inactivity_timeout => 5).get
           file = Tempfile.new('')
@@ -73,7 +72,12 @@ module Llama
           }
           http.callback {
             file.close
-            self.send_image(file.path, refer)
+            type = FastImage.type(file.path)
+            if %i(jpeg png gif).include?(type)
+              self.send_image(file.path, refer, &cb)
+            else
+              cb.call(false) unless cb.nil?
+            end
           }
         rescue Exception => e
           return false

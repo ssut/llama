@@ -79,11 +79,11 @@ module Llama
       # p @raw_target, @id
     end
 
-    def reply_user(type, content)
-      @user ? self.reply(type, content, @user) : false
+    def reply_user(type, content, &cb)
+      @user ? self.reply(type, content, @user, &cb) : false
     end
 
-    def reply(type, content, target=nil)
+    def reply(type, content, target=nil, &cb)
       target = @target if target.nil?
       if type == :text
         result = target.send_message(content, self)
@@ -91,10 +91,8 @@ module Llama
         result = target.send_sticker(*content, self)
       elsif type == :image
         method = content.include?('http') ? target.method(:send_image_url) : target.method(:send_image)
-        result = method.call(content, self)
+        method.call(content, self, &cb)
       end
-
-      result
     end
 
     def has_content?
