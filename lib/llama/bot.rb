@@ -30,8 +30,6 @@ module Llama
       @service = nil
       @service_conf = nil
       @callback = Callback.new(self)
-      @semaphores_mutex = Mutex.new
-      @semaphores = Hash.new { |h, k| h[k] = Mutex.new }
       @callback = Callback.new(self)
       @plugins_classes = []
       @plugins = PluginList.new(self)
@@ -48,13 +46,6 @@ module Llama
       yield config
       @service = name
       @service_conf = config
-    end
-
-    def synchronize(name, &block)
-      # Must run the default block +/ fetch in a thread safe way in order to
-      # ensure we always get the same mutex for a given name.
-      semaphore = @semaphores_mutex.synchronize { @semaphores[name] }
-      semaphore.synchronize(&block)
     end
 
     def plugin(*plugins)

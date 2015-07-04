@@ -7,20 +7,15 @@ module Llama
 
     def initialize
       @listeners = Hash.new { |h, k| h[k] = [] }
-      @mutex = Mutex.new
     end
 
     def register(listener)
-      @mutex.synchronize do
-        @listeners[listener.event] << listener
-      end
+      @listeners[listener.event] << listener
     end
 
     def unregister(*listeners)
-      @mutex.synchronize do
-        listeners.each do |listener|
-          @listeners[listener.event].delete(listener)
-        end
+      listeners.each do |listener|
+        @listeners[listener.event].delete(listener)
       end
     end
 
@@ -57,10 +52,6 @@ module Llama
 
     def each(&block)
       @listeners.values.flatten.each(&block)
-    end
-
-    def stop_all
-      each { |l| l.stop }
     end
   end
 end
