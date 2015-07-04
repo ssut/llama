@@ -110,6 +110,33 @@ bot.start! do |service|
 end
 ```
 
+### Writing a plugin for llama
+
+```ruby
+# You must require llama/plugin to make your own plugin
+require 'llama/plugin'
+
+class YourPlugin
+    # include Plugin module
+    include Llama::Plugin
+    
+    # The match format is as follows: match(expression, method=:execute)
+    # If you don't pass the second variable as explicitly, the default method will be set to "execute" for matches.
+    match 'Hello'
+    # or else, you could do with:
+    match 'Hi', :hi
+    
+    def hi(msg, capturse)
+        msg.reply(:text, 'Hi, #{msg.user.name}!')
+    end
+    
+    def execute(msg, captures)
+        msg.reply(:text, 'Hello!')
+    end
+end
+```
+
+
 ## TODO
 
 * Messanger event handler (:enter, :leave, :new\_member, :leave\_member)
