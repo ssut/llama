@@ -42,7 +42,7 @@ module Llama
       # If sender is not found, check member list of group chat sent to
       if (@sender.nil? and @receiver.class.to_s.include?('LineGroup')) or 
          (@sender.nil? and @receiver.class.to_s.include?('LineRoom')) then
-        sender = @receiver.contacts.find { |m| m.id == @raw_sender }
+        sender = @service.contacts.find { |m| m.id == @raw_sender }
         @sender = sender unless sender.nil?
       end
 
@@ -76,7 +76,6 @@ module Llama
         @receiver
       end
       @raw_target = @target.nil? ? '' : @target.id
-      # p @raw_target, @id
     end
 
     def reply_user(type, content, &cb)
