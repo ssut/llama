@@ -40,8 +40,10 @@ module Llama
       instance_eval(&b) if block_given?
     end
 
-    def service(name, &block)
+    def service(name=nil, &block)
+      return @service if block.nil?
       raise "A service already exists!" unless @service.nil?
+      raise "Service name is needed!" if name.nil?
 
       config = OpenStruct.new(:username => '', :password => '', :name => '')
       yield config
