@@ -18,6 +18,8 @@ module Llama
     # @return [Room] The room in which this message was sent
     attr_reader :room
 
+    attr_reader :content_type
+
     attr_accessor :checked
 
     def initialize(service, msg)
@@ -28,7 +30,22 @@ module Llama
       @raw = msg.text ? msg.text : ''
       @time = DateTime.strptime((msg.createdTime / 1000).to_s, '%s')
       @type = msg.toType
-      @content_type = msg.contentType
+      @has_content = false
+      @content_type = case msg.contentType
+      when ContentType::NONE
+        :text
+      when ContentType::IMAGE
+        @has_content = true
+        :image
+      when ContentType::VIDEO
+        @has_content = true
+        :video
+      when ContentType::AUDIO
+        @has_content = true
+        :audio
+      when ContentType::STICKER
+        :sticker
+      end
       @content_preview = msg.contentPreview
       @content_metadata = msg.contentMetadata
 
@@ -96,6 +113,42 @@ module Llama
 
     def has_content?
       @msg.hasContent
+    end
+
+    def sticker
+      return false unless @content_type == :sticker
+
+      id = @content_metadata['STKID'].to_i
+      version = @content_metadata['STKVER'].to_i
+      ver = [(version / 1000000.0).floor, (version / 1000.0).floor, version % 1000].join('/')
+      package = @content_metadata['STKPKGID'].to_i
+      url = "http://dl.stickershop.line.naver.jp/products/#{ver}/#{package}/PC/stickers/#{id}.png"
+      {
+        "id" => id,
+        "version" => version,
+        "package" => package,
+        "url" => url
+      }
+    end
+
+    def download_content(&callback)
+      callback.call(false, nil) if not @has_content and not callback.nil?
+      url = "http://os.line.naver.jp/os/m/#{@id}"
+
+      begin
+        headers = @service.headers
+        http = EM::HttpRequest.new(url, :connect_timeout => 3, :inactivity_timeout => 10).get(:head => headers)
+        file = Tempfile.new(['image', '.jpg'])
+        http.stream { |chunk|
+          file.write(chunk)
+        }
+        http.callback {
+          file.close
+          callback.call(true, file)
+        }
+      rescue Exception => e
+        callback.call(false, nil) unless callback.nil?
+      end
     end
   end
 end
