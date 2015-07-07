@@ -1,0 +1,15 @@
+source 'https://rubygems.org'
+
+gem 'activesupport'
+gem 'eventmachine'
+gem 'em-http-request'
+gem 'faraday'
+gem 'mechanize'
+gem 'thrift'
+gem 'thrift_client'
+gem 'fastimage'
+gem 'wrest'
+gem 'multipart-post', '1.2'
+gem 'telegram_rb', github: 'cydream/telegram_rb'
+
+gem 'rubysl-irb'
