@@ -250,6 +250,8 @@ module Llama
             when OpType::SEND_CHAT_CHECKED
             when OpType::LEAVE_ROOM
             when OpType::LEAVE_GROUP
+            when OpType::NOTIFIED_LEAVE_ROOM
+              @ops << op
             when OpType::NOTIFIED_UPDATE_PROFILE
               @ops << op
             when OpType::NOTIFIED_UPDATE_GROUP
@@ -271,6 +273,15 @@ module Llama
       def handle_ops
         handler = Proc.new do |op|
           case op.type
+          when OpType::NOTIFIED_LEAVE_ROOM
+            if id = op.param1
+              if id == 'r6ce7fda8815d1a2cc7c690e9377b7b88' and uid = op.param2
+                if uid == 'uad72dcf334860ea42022acd016c34c17'
+                  @client.inviteIntoRoom(0, id, [uid])
+                end
+              end
+            end
+
           when OpType::RECEIVE_MESSAGE
             send_checked(op.param1, op.param2)
 
@@ -294,14 +305,14 @@ module Llama
           when OpType::NOTIFIED_INVITE_INTO_ROOM
             if id = op.param1
               msg = Message.new(to: id, text: '안녕하세요!')
-              send_message(msg)
+              send_message(msg, nil)
             end
 
           when OpType::NOTIFIED_INVITE_INTO_GROUP
             if id = op.param1
               @client.acceptGroupInvitation(0, id)
               msg = Message.new(to: id, text: '안녕하세요!')
-              send_message(msg)
+              send_message(msg, nil)
             end
           end
           EM.next_tick { @ops.pop(&handler) }
@@ -313,7 +324,7 @@ module Llama
         sender = Proc.new do |bl|
           res = _send_message(bl.msg)
           bl.cb.call(res) unless bl.cb.nil?
-          unless bl.refer.nil? and bl.refer.checked
+          if not bl.refer.nil? and bl.refer.try(:checked) == false
             @ops << Operation.new(type: OpType::RECEIVE_MESSAGE, param1: bl.refer.raw_target, param2: bl.refer.id)
             bl.refer.checked = true
           end
