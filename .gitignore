@@ -44,3 +44,5 @@ line.thrift
 # vim
 *.swp
 
+Gemfile.lock
+.ruby-version
