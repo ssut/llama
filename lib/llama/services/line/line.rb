@@ -100,7 +100,7 @@ module Llama
       end
 
       def init_agent
-        version = '4.0.3'
+        version = '4.2.1'
         os_version = '10.9.4-MAVERICKS-x64'
         user_agent = "DESKTOP:MAC:#{os_version}(#{version})"
         app = "DESKTOPMAC\t#{version}\tMAC\t\t#{os_version}"
@@ -190,7 +190,7 @@ module Llama
           @cert = msg.authToken
           self.login_token()
         when LoginResultType::REQUIRE_DEVICE_CONFIRM
-          puts "Input following code on your mobile LINE app in 2 minutes: #{msg.auth_digit}"
+          puts "Input following code on your mobile LINE app in 2 minutes: #{msg.pinCode}"
 
           @headers['X-Line-Access'] = msg.verifier
           @agent.request_headers = @headers
